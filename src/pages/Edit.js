@@ -6,9 +6,12 @@ import Select from 'react-select'
 import { useHistory } from 'react-router-dom';
 import { toast} from "react-toastify";
 
-export default function Add() {
+export default function Edit(props) {
 
     const history = useHistory();
+
+    const [startDate, setStartDate] = useState(new Date());
+    const [endDate, setEndDate] = useState(new Date());
 
     const [ provinceData, setProvinceData ] = useState({});
     const [ provinceSelect, setProvinceSelect ] = useState({value: null, label: 'ไม่ระบุ'});
@@ -29,7 +32,8 @@ export default function Add() {
         budget_support:0,
         is_improvement_project:false,
         is_innovation_project:false,
-        is_research_project:false
+        is_research_project:false,
+        successful: false
         });
 
     const handleChangeBS = (e) =>{
@@ -57,25 +61,46 @@ export default function Add() {
     }
 
     const handleChangeE = (date) => {
+        setEndDate(date)
         setAllProject({...allProject, end_date:date});
     }
     const handleChangeS = (date) => {
+        setStartDate(date)
         setAllProject({...allProject, start_date:date});
     }
+
+
+    useEffect(() => {
+        console.log("props.match.params.id:", props.match.params.id);
+        PostgreAPI.get('project/get/'+props.match.params.id)
+            .then((res) => {
+                setAllProject(res.data);
+                console.log("res.data:", res.data);
+                setEndDate(new Date(res.data.end_date))
+                setStartDate(new Date(res.data.start_date))
+            })
+            .catch((error) => {
+                console.error(error)
+            });
+    }, [])
     
 
     // -------------------------------------------------------------------------------------------------------
     useEffect(() => {
+        if(allProject.successful === true){
+
+        }
         PostgreAPI.get("/forselect/province")
             .then((res) => {
                 setProvinceData(res.data);
                 // setLoadingFaculty(true)
                 console.log("province: ",res.data);
+                setProvinceSelect(res.data.find(obj => obj.value === allProject.province_id));
             })
             .catch((error) => {
                 console.error(error)
             });
-    }, []);
+    }, [allProject]);
 
     const handleProvinceSelect = (selectedOption) => {
         setAllProject({...allProject, province_id : selectedOption.value});
@@ -89,11 +114,12 @@ export default function Add() {
                 setTypeData(res.data);
                 // setLoadingFaculty(true)
                 console.log("project_type: ",res.data);
+                setTypeSelect(res.data.find(obj => obj.value === allProject.project_type_id));
             })
             .catch((error) => {
                 console.error(error)
             });
-    }, []);
+    }, [allProject]);
 
     const handleTypeSelect = (selectedOption) => {
         setAllProject({...allProject, project_type_id : selectedOption.value});
@@ -101,13 +127,12 @@ export default function Add() {
     }
 
     // -------------------------------------------------------------------------------------------------------
-    const addProject = () => {
+    const updateProject = () => {
         try {
-            PostgreAPI.post('/project/create', allProject)
+            PostgreAPI.put('/project/update/'+props.match.params.id, allProject)
             .then((res) => {
                 // toast.success("Update Successfully!");
-                alert("Create Successfully!")
-                history.push('/edit/'+res.data.id);
+                alert("Update Successfully!")
             })
             .catch((error) => {
                 console.error(error)
@@ -115,6 +140,10 @@ export default function Add() {
         } catch (error) {
             console.log(error)
         }
+    }
+
+    const backback = () =>{
+        history.push('/');
     }
     
     
@@ -126,13 +155,13 @@ return (
             <Form.Group as={Row} controlId="1">
                 <Form.Label column sm="2">ชื่อโครงการ</Form.Label>
                 <Col sm="10">
-                    <Form.Control type="text" name="name" onChange={handleChange} placeholder="ชื่อโครงการ" />
+                    <Form.Control type="text" value={allProject.name} name="name" onChange={handleChange} placeholder="ชื่อโครงการ" />
                 </Col>
             </Form.Group>
             <Form.Group as={Row} controlId="1">
                 <Form.Label column sm="2">รายละเอียดโครงการ</Form.Label>
                 <Col sm="10">
-                    <Form.Control as="textarea" rows={3} name="detail" onChange={handleChange} placeholder="รายละเอียด" />
+                    <Form.Control as="textarea" rows={3} value={allProject.detail} name="detail" onChange={handleChange} placeholder="รายละเอียด" />
                 </Col>
             </Form.Group>
         
@@ -152,13 +181,13 @@ return (
             <Form.Group as={Row} controlId="1">
                 <Form.Label column sm="2">เริ่มต้น</Form.Label>
                 <Col sm="10">
-                    <DatePicker selected={allProject.start_date} onChange={date => handleChangeS(date)}/>
+                    <DatePicker selected={startDate} onChange={date => handleChangeS(date)} />
                 </Col>
             </Form.Group>
             <Form.Group as={Row} controlId="1">
                 <Form.Label column sm="2">สิ้นสุด</Form.Label>
                 <Col sm="10">
-                    <DatePicker selected={allProject.end_date} onChange={date => handleChangeE(date)}/>
+                    <DatePicker selected={endDate} onChange={date => handleChangeE(date)} />
                 </Col>
             </Form.Group>
 
@@ -166,7 +195,7 @@ return (
             <Form.Group as={Row} controlId="1">
                 <Form.Label column sm="2">งบประมาณ</Form.Label>
                 <Col sm="10">
-                    <Form.Control type="number" name="budget" onChange={handleChange} placeholder="งบประมาณ" />
+                    <Form.Control type="number" value={allProject.budget} name="budget" onChange={handleChange} placeholder="งบประมาณ" />
                 </Col>
             </Form.Group>
             <Form.Group as={Row} controlId="1">
@@ -180,7 +209,7 @@ return (
             {allProject.is_support && <Form.Group as={Row} controlId="1">
                 <Form.Label column sm="2">งบประมาณ</Form.Label>
                 <Col sm="10">
-                    <Form.Control type="number" name="budget_support" onChange={handleChange} placeholder="งบประมาณ" />
+                    <Form.Control type="number" value={allProject.budget_support} name="budget_support" onChange={handleChange} placeholder="งบประมาณ" />
                 </Col>
             </Form.Group>}
 
@@ -193,10 +222,11 @@ return (
                 </Col>
             </Form.Group>
 
-            <Button type="button" className="mb-2" onClick={() => addProject()}>Submit</Button>
+            <Button type="button" className="mb-2" onClick={() => updateProject()}>บันทึก</Button>
+            <Button type="button" className="mb-2" onClick={() => backback()} variant="secondary">กลับ</Button>
             </Form>
             {/* <div style={{ marginTop: 20 }}><pre>{JSON.stringify(allProject, null, 2)}</pre></div> */}
-            </Container>
+        </Container>
     </>
 )
 }

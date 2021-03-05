@@ -1,6 +1,6 @@
 import axios from "axios";
 
-export const PostgreURL = "http://localhost:55022";
+export const PostgreURL = "http://167.99.70.72:55022";
 
 export default axios.create({
     baseURL: PostgreURL,
